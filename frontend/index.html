@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Project WHYNOT</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": {
+        "three": "./vendor/three/build/three.module.min.js",
+        "three/addons/": "./vendor/three/addons/"
+    } }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="labels"></div>
+
+  <header id="hud-top">
+    <div id="hud-left">
+      <h1>PROJECT <span>WHYNOT</span></h1>
+      <div class="badges">
+        <span class="badge warn">PAPER MONEY ONLY</span>
+        <span class="badge" id="badge-source">CONNECTING</span>
+        <span class="badge" title="Backtests and replays are simulated. Paper fills come from the Alpaca paper account. Each result is labeled.">SIMULATED AND BROKER RESULTS ARE LABELED</span>
+      </div>
+      <nav id="nav"></nav>
+      <button id="exit-tower" hidden>&larr; BACK TO CITY</button>
+    </div>
+    <div id="clock-box">
+      <div id="clock">--:--</div>
+      <div id="date">connecting...</div>
+      <div id="regime"></div>
+    </div>
+  </header>
+
+  <div id="lock-banner" hidden></div>
+
+  <aside id="panel" hidden>
+    <button id="panel-close" aria-label="Close">&times;</button>
+    <div id="panel-body"></div>
+  </aside>
+
+  <aside id="lab" hidden>
+    <button id="lab-close" aria-label="Close">&times;</button>
+    <div id="lab-body"></div>
+  </aside>
+
+  <footer id="hud-bottom">
+    <div id="tape"></div>
+    <div id="credits">Block textures: Pixel Perfection by XSSheep and contributors (CC BY-SA 4.0). Font: Monocraft (OFL). Not affiliated with Mojang or Minecraft.</div>
+  </footer>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

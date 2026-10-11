@@ -1,0 +1,28 @@
+[project]
+name = "whynot"
+version = "0.1.0"
+description = "Project WHYNOT: a paper-trading options research platform with a 3D city command center"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "yfinance",
+    "hmmlearn",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+whynot = "whynot.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["whynot"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning:hmmlearn"]
