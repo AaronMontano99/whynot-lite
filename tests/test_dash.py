@@ -161,3 +161,19 @@ def test_a_position_opened_today_counts_its_whole_result_as_todays_and_a_shared_
     s = views.state(path, both)
     kip, aura = (next(b for b in s["bots"] if b["id"] == n) for n in ("Kip", "Aura"))
     assert kip["day_pnl"] == aura["day_pnl"] == 120.0 and kip["total_pnl"] == 120.0 and kip["position"]["unrealized"] == 120.0
+
+
+def test_every_view_closes_the_database_it_opened(path, monkeypatch):
+    opened, real = [], views.connect
+
+    def tracked(p):
+        opened.append(real(p))
+        return opened[-1]
+
+    monkeypatch.setattr(views, "connect", tracked)
+    views.state(path, BROKER), views.live(path), views.regimes(path), views.research(path)
+    views.journal(path), views.risk(path, BROKER), views.health(path)
+    assert len(opened) >= 7
+    for con in opened:                       # a closed connection refuses to be used
+        with pytest.raises(sqlite3.ProgrammingError):
+            con.execute("SELECT 1")

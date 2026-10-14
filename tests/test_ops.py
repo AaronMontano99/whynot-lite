@@ -141,3 +141,12 @@ def test_health_checks_name_what_is_wrong(path):
     assert not bad["scheduled jobs"]["ok"] and "com.whynot.paper.open" in bad["scheduled jobs"]["detail"]
     assert not bad["broker"]["ok"] and not bad["dashboard"]["ok"]
     assert not bad["recent backup"]["ok"]
+
+
+def test_the_review_finds_claude_without_the_shell_path(monkeypatch, tmp_path):
+    from whynot.ops import review
+    (tmp_path / ".local" / "bin").mkdir(parents=True)
+    (tmp_path / ".local" / "bin" / "claude").write_text("")
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")                   # what launchd gives a scheduled job
+    monkeypatch.setattr(review.Path, "home", lambda: tmp_path)
+    assert review.claude_command() == str(tmp_path / ".local" / "bin" / "claude")

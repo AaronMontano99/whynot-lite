@@ -23,7 +23,7 @@ What is here and what is not:
 
 | Included | Kept private |
 |---|---|
-| All source code and the 141 tests | The market data and trade databases |
+| All source code and the 158 tests | The market data and trade databases |
 | The 3D dashboard and replay | Account details, keys and logs |
 | The playbooks for every agent and market state | Day-to-day reports and backups |
 | My reasoning and the rules the system must obey | The full working specification and build history |
@@ -47,7 +47,7 @@ system may and may not do, and holding it to that.
 | Kip | Futuristic | QQQ | Momentum and trend following |
 | Nemo | Ocean | SPY | Mean reversion |
 | Chud | Matrix | IWM | Volatility and regime changes |
-| Era | Wrist watch | QQQ | Intraday opening range |
+| Era | Wrist watch | QQQ, then single stocks | Intraday opening range; later a news wild card (rejected, see below) |
 | Aura | Glowing, godly | QQQ | Adaptive strategy research |
 
 These are starting hypotheses, not proven strategies. All five answer to one risk engine.
@@ -71,10 +71,16 @@ Signals on the funds' shares, development period (2006 to 2019; Era 2016 to 2019
 - The regime model lowered returns compared with the same rules without it.
 - The one year with real option prices (2024) made +0.9% on $100,000 over 55 trades, and
   turns negative if the assumed trading cost is doubled.
-- The first research cycle proposed two challengers. Both were rejected on development
+- The first research cycles proposed two challengers. Both were rejected on development
   data, so validation data was never opened for them.
+- Era was retried as a wild card: each day, the stock that is suddenly in the news (at
+  least 5 headlines and 3 times its own usual number) and moved at least 2%, followed for
+  3 sessions. On about 500 trades from 2016 to 2019 it averaged +0.05% a trade (t 0.22) and
+  failed 6 of the 11 screens. Picking by news beat picking the day's biggest mover
+  (−58.7%), but neither beat holding SPY (+62.5%). It was rejected and Era stays off.
 - The locked holdout period has been looked at zero times.
-- Four agents are paper trading at the smallest size to collect forward evidence.
+- Four agents are paper trading at the smallest size to collect forward evidence. The first
+  week was a losing one, which on a handful of trades says nothing either way.
 
 Caveats: historical option bid and ask prices were not available, so backtest fills use
 real traded prices plus an assumed cost, and implied volatility and Greeks are derived.
@@ -85,12 +91,12 @@ Three layers that never overlap: the AI researches and advises, the regime model
 probabilities, and plain code decides. No model can override a limit.
 
 ```
-whynot/ingest/       point-in-time data catalog, downloads, validation
+whynot/ingest/       point-in-time data catalog, downloads, validation, timestamped headlines
 whynot/regime.py     the Hidden Markov model: fit, refit, forward filter
 whynot/walkforward.py  the regime model walked through time
 whynot/switching.py  the six switching rules        whynot/sizing.py  position sizing
 whynot/partitions.py the chronological split and the locked holdout
-whynot/sim/          agents, playbooks, daily and intraday engines, statistics
+whynot/sim/          agents, playbooks, daily, intraday and news wild-card engines, statistics
 whynot/opt/          option pricing, contract selection, fills
 whynot/riskengine.py the central limits and kill switch
 whynot/researchlab/  research memory, limits, screens, champion against challenger
@@ -105,7 +111,7 @@ You need Python 3.11 or newer and a free Alpaca account for paper-trading API ke
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/pytest                      # 135 run with no keys or data; 6 stress replays need the download
+.venv/bin/pytest                      # 152 run with no keys or data; 6 stress replays need the download
 cp .env.example .env                  # then paste your own Alpaca paper keys
 .venv/bin/whynot data ingest          # downloads the history (large)
 .venv/bin/whynot dash                 # http://127.0.0.1:8090

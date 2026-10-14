@@ -1,7 +1,9 @@
 """What each dashboard section shows, as plain dictionaries read from the database."""
 
+import functools
 import json
 import sqlite3
+import threading
 from dataclasses import asdict
 from datetime import date, datetime
 
@@ -28,10 +30,31 @@ def prepare(path: str) -> None:
         make(path)
 
 
+_opened = threading.local()
+
+
 def connect(path: str) -> sqlite3.Connection:
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=10)
     con.row_factory = sqlite3.Row
+    if getattr(_opened, "cons", None) is not None:
+        _opened.cons.append(con)
     return con
+
+
+def _closes(view):
+    """Close whatever the view opened, also when it fails; the server runs for weeks and must not run out of file handles."""
+    @functools.wraps(view)
+    def run(*args, **kwargs):
+        if getattr(_opened, "cons", None) is not None:      # called from inside another view
+            return view(*args, **kwargs)
+        _opened.cons = []
+        try:
+            return view(*args, **kwargs)
+        finally:
+            for con in _opened.cons:
+                con.close()
+            _opened.cons = None
+    return run
 
 
 def _rows(con, sql, args=()) -> list:
@@ -56,6 +79,7 @@ def _drawdown(pnls: list) -> float:
     return worst / ALLOCATION
 
 
+@_closes
 def state(path: str, broker: dict | None = None) -> dict:
     """The city: one entry per tower, plus the vault."""
     con, broker = connect(path), broker or {"ok": False, "label": "Alpaca paper account", "error": "not asked"}
@@ -108,6 +132,7 @@ def state(path: str, broker: dict | None = None) -> dict:
             "last_close": (con.execute("SELECT value FROM live_checkpoint WHERE name='close'").fetchone() or [None])[0], "bots": bots, "vault": vault}
 
 
+@_closes
 def live(path: str) -> dict:
     con = connect(path)
     latest = con.execute("SELECT MAX(day) FROM live_decision").fetchone()[0]
@@ -119,6 +144,7 @@ def live(path: str) -> dict:
             "log": _rows(con, "SELECT * FROM live_log ORDER BY id DESC LIMIT 30")}
 
 
+@_closes
 def regimes(path: str) -> dict:
     from ..live.run import LIVE_START
     con, out = connect(path), {}
@@ -138,6 +164,7 @@ def regimes(path: str) -> dict:
     return out
 
 
+@_closes
 def research(path: str) -> dict:
     con = connect(path)
     limits = con.execute("SELECT value FROM setting WHERE name='limits'").fetchone()
@@ -151,6 +178,7 @@ def research(path: str) -> dict:
             "lessons": _rows(con, "SELECT * FROM lesson ORDER BY id DESC LIMIT 50")}
 
 
+@_closes
 def journal(path: str, q: str = "", agent: str = "", source: str = "", limit: int = 300) -> dict:
     """Every trade on record, from paper trading and from the stored backtests, each
     labeled with what produced it."""
@@ -177,6 +205,7 @@ def journal(path: str, q: str = "", agent: str = "", source: str = "", limit: in
     return {"total": len(keep), "rows": keep[:limit]}
 
 
+@_closes
 def risk(path: str, broker: dict | None = None) -> dict:
     con = connect(path)
     saved = con.execute("SELECT value FROM live_checkpoint WHERE name='risk'").fetchone()
@@ -197,6 +226,7 @@ def risk(path: str, broker: dict | None = None) -> dict:
             "how_to_reset": f"The kill switch is reset only by you. Tell Claude to reset it, or it stays off. The phrase the code requires is: {RESET_PHRASE}"}
 
 
+@_closes
 def health(path: str) -> dict:
     con = connect(path)
     data = []
@@ -261,8 +291,11 @@ def replay(path: str, agent: str, start: str, end: str) -> dict:
         raise PermissionError(f"Replay for Agent {agent} covers {first} to {DEVELOPMENT_END}, the development years. Later years are held back: "
                               "validation is looked at once per candidate strategy, and the holdout is locked.")
     cat, store = Catalog(path), walkforward.RegimeStore(path)
-    records = regime_records(store, a.symbol, e)
-    if a.timeframe == "5Min":
-        return replay_frames(a, [], records, s, e, COST_BPS[a.symbol], sessions=CatalogSessions(cat, a.symbol, s, e))
-    candles = [c for c in walkforward.candles_from_catalog(cat, a.symbol) if c.day <= e]
-    return replay_frames(a, candles, records, s, e, COST_BPS[a.symbol])
+    try:
+        records = regime_records(store, a.symbol, e)
+        if a.timeframe == "5Min":
+            return replay_frames(a, [], records, s, e, COST_BPS[a.symbol], sessions=CatalogSessions(cat, a.symbol, s, e))
+        candles = [c for c in walkforward.candles_from_catalog(cat, a.symbol) if c.day <= e]
+        return replay_frames(a, candles, records, s, e, COST_BPS[a.symbol])
+    finally:
+        cat.db.close(), store.db.close()

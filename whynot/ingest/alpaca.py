@@ -92,6 +92,14 @@ class Alpaca:
         for bars in self._pages(f"{DATA}/v2/stocks/{symbol}/bars", params, "bars"):
             yield from bars
 
+    def stock_days(self, symbols: list, start: str, end: str):
+        """Yields (symbol, daily bar) for several stocks at once, adjusted for splits only."""
+        params = {"symbols": ",".join(symbols), "timeframe": "1Day", "start": start, "end": end, "limit": 10000, "adjustment": "split", "feed": "sip"}
+        for by_symbol in self._pages(f"{DATA}/v2/stocks/bars", params, "bars"):
+            for symbol, bars in dict(by_symbol).items():
+                for bar in bars:
+                    yield symbol, bar
+
     def option_bars(self, symbols: list, timeframe: str, start: str, end: str):
         """Yields (contract, bar). A contract that never traded yields nothing."""
         params = {"symbols": ",".join(symbols), "timeframe": timeframe, "start": start, "limit": 10000}
@@ -107,6 +115,12 @@ class Alpaca:
                   "expiration_date_gte": expiration_from, "expiration_date_lte": expiration_to}
         for contracts in self._pages(f"{PAPER}/v2/options/contracts", params, "option_contracts"):
             yield from contracts
+
+    def news(self, start: str, end: str):
+        """Headlines published in [start, end), oldest first, with the symbols each names."""
+        params = {"start": start, "end": end, "limit": 50, "sort": "asc", "include_content": "false"}
+        for items in self._pages(f"{DATA}/v1beta1/news", params, "news"):
+            yield from items
 
     def calendar(self, start: str, end: str) -> list:
         return self.get(f"{PAPER}/v2/calendar", {"start": start, "end": end})

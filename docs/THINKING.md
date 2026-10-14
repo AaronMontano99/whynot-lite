@@ -132,6 +132,14 @@ with its own character, is easier to read and more fun to build than a table. Th
 dashboard is read-only, and it always labels what is simulated and what came from the
 broker.
 
+## Trying an idea I liked, and letting the data say no
+
+I wanted one agent to be a wild card that trades whatever is trending in the news. It
+went through the same process as everything else: the hypothesis and the grading were
+written down first, a headline was only ever counted (never read or obeyed), and it was
+tested once on the development years. It did not pass, so it does not trade. That is the
+framework doing its job on my own idea.
+
 ## Where it stands
 
 No strategy has passed. The regime model did not improve returns. The system is paper

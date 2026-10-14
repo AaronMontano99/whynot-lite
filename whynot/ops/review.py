@@ -3,8 +3,10 @@ The notes are advice: they are stored beside the report and change nothing. Ever
 in the report is passed as data, and the prompt says so."""
 
 import json
+import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 MODEL = "claude-opus-5-5"
 PROMPT = """You are reviewing one day of a paper-trading research system. Below is today's report, written by code.
@@ -23,11 +25,20 @@ REPORT:
 """
 
 
+def claude_command() -> str:
+    """The scheduled jobs run with a bare PATH that leaves out ~/.local/bin, where the installer puts claude."""
+    found = shutil.which("claude")
+    if found:
+        return found
+    local = Path.home() / ".local" / "bin" / "claude"
+    return str(local) if local.exists() else "claude"
+
+
 def nightly_review(report: str, timeout: int = 240) -> tuple:
     """(notes or None, why not). Only an answer from Opus 5.5 is accepted; no other model is substituted."""
     try:
         with tempfile.TemporaryDirectory() as scratch:      # an empty folder: no project files, and no tools are offered
-            run = subprocess.run(["claude", "-p", "--model", MODEL, "--tools", "", "--no-session-persistence", "--output-format", "json"],
+            run = subprocess.run([claude_command(), "-p", "--model", MODEL, "--tools", "", "--no-session-persistence", "--output-format", "json"],
                                  input=PROMPT + report, capture_output=True, text=True, timeout=timeout, cwd=scratch)
         if run.returncode != 0:
             return None, f"the review command failed: {(run.stderr or run.stdout)[:160]}"
