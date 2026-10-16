@@ -26,6 +26,18 @@ CREATE TABLE IF NOT EXISTS live_log (id INTEGER PRIMARY KEY, kind TEXT NOT NULL,
 """
 
 
+def agent_mark(con, pos, mark) -> tuple[float, float]:
+    """One agent's part of a broker position, as (result since its fill, result today). Two agents can share one
+    contract at the broker, which reports a single average cost, so each part is measured from that agent's own fill."""
+    if not mark or not mark["qty"]:
+        return 0.0, 0.0
+    holders = con.execute("SELECT qty, entry_price FROM live_position WHERE contract=?", (pos["contract"],)).fetchall()
+    held = sum(h["qty"] for h in holders) or pos["qty"]
+    average = sum(h["qty"] * h["entry_price"] for h in holders) / held if holders else pos["entry_price"]
+    share = pos["qty"] / mark["qty"]
+    return mark["unrealized"] * share + (average - pos["entry_price"]) * pos["qty"] * 100, mark["unrealized_today"] * share
+
+
 class LiveDB:
     def __init__(self, path="data/whynot.db"):
         self.path = path

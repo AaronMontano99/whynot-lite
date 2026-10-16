@@ -23,7 +23,7 @@ What is here and what is not:
 
 | Included | Kept private |
 |---|---|
-| All source code and the 158 tests | The market data and trade databases |
+| All source code and the 159 tests | The market data and trade databases |
 | The 3D dashboard and replay | Account details, keys and logs |
 | The playbooks for every agent and market state | Day-to-day reports and backups |
 | My reasoning and the rules the system must obey | The full working specification and build history |
@@ -111,7 +111,7 @@ You need Python 3.11 or newer and a free Alpaca account for paper-trading API ke
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/pytest                      # 152 run with no keys or data; 6 stress replays need the download
+.venv/bin/pytest                      # 153 run with no keys or data; 6 stress replays need the download
 cp .env.example .env                  # then paste your own Alpaca paper keys
 .venv/bin/whynot data ingest          # downloads the history (large)
 .venv/bin/whynot dash                 # http://127.0.0.1:8090

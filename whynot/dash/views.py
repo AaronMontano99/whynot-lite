@@ -11,7 +11,7 @@ from .. import regime, walkforward
 from ..ingest.catalog import Catalog
 from ..ingest.timeutil import ET, et_day
 from ..live.lifecycle import Lifecycle
-from ..live.state import LiveDB
+from ..live.state import LiveDB, agent_mark
 from ..partitions import DEVELOPMENT_END
 from ..researchlab.memory import ResearchDB
 from ..riskengine import RESET_PHRASE, RiskSettings
@@ -100,8 +100,8 @@ def state(path: str, broker: dict | None = None) -> dict:
         waiting = con.execute("SELECT 1 FROM live_intent WHERE agent=? AND status IN ('pending', 'submitted') AND side='BUY'", (a.id,)).fetchone()
         mark = held.get(pos["contract"]) if pos else None
         realized = sum(t["pnl"] for t in trades)
-        share = pos["qty"] / mark["qty"] if mark and mark["qty"] else 0.0         # two agents can share one contract at the broker
-        unreal = mark["unrealized"] * share if mark else (None if pos else 0.0)
+        since, moved = agent_mark(con, pos, mark)
+        unreal = since if mark else (None if pos else 0.0)
         active = a.id in trading and mode == "LIVE_PAPER_TRADING"
         bots.append({
             "id": a.id, "name": f"AGENT {a.id.upper()}", "symbol": a.symbol, "focus": a.focus, "theme": THEMES.get(a.id, ""), "bot": a.bot,
@@ -115,7 +115,7 @@ def state(path: str, broker: dict | None = None) -> dict:
             "position": None if not pos else {"contract": pos["contract"], "qty": pos["qty"], "direction": pos["direction"], "entry_day": pos["entry_day"],
                                               "entry_price": pos["entry_price"], "price": mark["price"] if mark else None,
                                               "unrealized": unreal, "simulated": bool(pos["simulated"])},
-            "day_pnl": ((mark["unrealized"] if pos["entry_day"] == today else mark["unrealized_today"]) * share if mark else 0.0)
+            "day_pnl": ((since if pos["entry_day"] == today else moved) if mark else 0.0)
                        + sum(t["pnl"] for t in trades if t["exit_day"] == today),
             "total_pnl": realized + (unreal or 0.0), "trades": len(trades),
             "win_rate": sum(t["pnl"] > 0 for t in trades) / len(trades) if trades else None,

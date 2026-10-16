@@ -7,6 +7,7 @@ import sqlite3
 import time
 from datetime import date
 
+from ..live.state import agent_mark
 from ..sizing import MIN_FILLS
 from ..sim.agents import AGENTS
 
@@ -52,11 +53,10 @@ def daily_report(path: str, day: date, broker: dict | None = None, checks: list 
         today = [t for t in trades if t["exit_day"] == d]
         pos = con.execute("SELECT * FROM live_position WHERE agent=?", (a.id,)).fetchone()
         mark = held.get(pos["contract"]) if pos else None
-        share = (pos["qty"] / mark["qty"]) if mark and mark["qty"] else 0.0          # two agents can share one contract at the broker
+        since, moved = agent_mark(con, pos, mark)
         # a position opened today has only been ours since its fill, so its result today is its whole result
-        moved = (mark["unrealized"] if pos and pos["entry_day"] == d else mark["unrealized_today"]) * share if mark else 0.0
-        day_pnl = sum(t["pnl"] for t in today) + moved
-        total = sum(t["pnl"] for t in trades) + (mark["unrealized"] * share if mark else 0.0)
+        day_pnl = sum(t["pnl"] for t in today) + (since if pos and pos["entry_day"] == d else moved)
+        total = sum(t["pnl"] for t in trades) + since
         fills = len(today) + (1 if pos and pos["entry_day"] == d else 0)
         for t in today:
             best = t if best is None or t["pnl"] > best["pnl"] else best

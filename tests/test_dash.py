@@ -163,6 +163,18 @@ def test_a_position_opened_today_counts_its_whole_result_as_todays_and_a_shared_
     assert kip["day_pnl"] == aura["day_pnl"] == 120.0 and kip["total_pnl"] == 120.0 and kip["position"]["unrealized"] == 120.0
 
 
+def test_a_shared_contract_is_split_by_each_agents_own_fill_price(path):
+    live = LiveDB(path)
+    live.open_position(agent="Kip", underlying="QQQ", contract=CALL, qty=1, direction="LONG", state="CHOP", entry_day="2026-10-09", entry_price=18.78, reason="x", simulated=False)
+    live.open_position(agent="Aura", underlying="QQQ", contract=CALL, qty=1, direction="LONG", state="CHOP", entry_day="2026-10-09", entry_price=18.82, reason="x", simulated=False)
+    both = {**BROKER, "positions": {CALL: {"qty": 2, "price": 7.87, "unrealized": -2186.0, "unrealized_today": -1268.0}}}   # the broker's average cost is 18.80
+    s = views.state(path, both)
+    kip, aura = (next(b for b in s["bots"] if b["id"] == n) for n in ("Kip", "Aura"))
+    assert kip["position"]["unrealized"] == pytest.approx(-1091.0) and aura["position"]["unrealized"] == pytest.approx(-1095.0)
+    assert kip["total_pnl"] + aura["total_pnl"] == pytest.approx(-2186.0)
+    assert kip["day_pnl"] == aura["day_pnl"] == pytest.approx(-634.0)
+
+
 def test_every_view_closes_the_database_it_opened(path, monkeypatch):
     opened, real = [], views.connect
 
