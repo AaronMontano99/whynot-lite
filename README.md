@@ -1,5 +1,7 @@
 # Project WHYNOT (lite)
 
+**See it live: [whynot-world.vercel.app](https://whynot-world.vercel.app)**. Walk the world, then open the stats. It's a read-only snapshot of the paper account, and nothing there is real money.
+
 A paper-trading research framework for QQQ, SPY and IWM options: five agents, a Hidden
 Markov regime model, one central risk engine, and a 3D city that shows what they are doing.
 
